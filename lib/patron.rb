@@ -53,13 +53,26 @@ module ::Patreon
       return if user.blank?
 
       user.custom_fields["patreon_id"] = patreon_id
-      user.custom_fields["patreon_email"] = all[patreon_id]["email"]
-      user.custom_fields["patreon_amount_cents"] = Patreon::Pledges.all[patreon_id]
-      reward_users = Patreon::RewardUser.all
-      user.custom_fields["patreon_rewards"] = Patreon::Reward.all.map { |i, r| r["title"] if reward_users[i].include?(patreon_id) }.compact.join(", ")
       user.save unless skip_save || user.custom_fields_clean?
 
       user
+    end
+
+    def self.get(attribute, user)
+      id = user.custom_fields['patreon_id']
+      return if id.blank?
+
+      case attribute
+      when /email$/
+        all[id]["email"]
+      when /amount_cents$/
+        Patreon::Pledges.all[id]
+      when /rewards$/
+        reward_users = Patreon::RewardUser.all
+        user.custom_fields["patreon_rewards"] = Patreon::Reward.all.map { |i, r| r["title"] if reward_users[i].include?(id) }.compact.join(", ")
+      else
+        id
+      end
     end
 
     private

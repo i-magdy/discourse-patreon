@@ -40,9 +40,9 @@ RSpec.describe ::Patreon::Patron do
     local_users.each do |user|
       cf = user.custom_fields
       id = cf["patreon_id"]
-      expect(cf["patreon_email"]).to eq(patrons[id]["email"])
-      expect(cf["patreon_amount_cents"]).to eq(pledges[id])
-      expect(cf["patreon_rewards"]).to eq(titles[id])
+      expect(described_class.get("patreon_email", user)).to eq(patrons[id]["email"])
+      expect(described_class.get("patreon_amount_cents", user)).to eq(pledges[id])
+      expect(described_class.get("patreon_rewards", user)).to eq(titles[id])
     end
   end
 

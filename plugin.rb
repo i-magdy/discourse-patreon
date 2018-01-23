@@ -165,11 +165,11 @@ after_initialize do
 
   ::Patreon::USER_DETAIL_FIELDS.each do |attribute|
     add_to_serializer(:admin_detailed_user, attribute.to_sym, false) do
-      object.custom_fields[attribute]
+      ::Patreon::Patron.get(attribute, object) rescue nil
     end
 
     add_to_serializer(:admin_detailed_user, "include_#{attribute}?".to_sym) do
-      object.custom_fields[attribute]
+      ::Patreon::Patron.get(attribute, object) rescue nil
     end
   end
 end

@@ -47,8 +47,6 @@ RSpec.describe ::Patreon::Campaign do
       get('users').each do |id, u|
         cf = Fabricate(:user, email: u[:email]).custom_fields
         expect(cf["patreon_id"]).to eq(id)
-        expect(cf["patreon_email"]).to eq(u[:email])
-        expect(cf["patreon_amount_cents"]).to eq(get("pledges")[id])
       end
     }.to change { GroupUser.count }.by(3)
   end
