@@ -7,6 +7,11 @@ RSpec.describe ::Patreon::Patron do
     user
   end
 
+  Fabricator(:user_custom_field) do
+    name "patreon_id"
+    user
+  end
+
   let(:patrons) { { "111111" => { "email" => "foo@bar.com" }, "111112" => { "email" => "boo@far.com" },  "111113" => { "email" => "roo@aar.com" } } }
   let(:pledges) { { "111111" => "100", "111112" => "500" } }
   let(:rewards) { { "0" => { title: "All Patrons", amount_cents: "0" }, "4589" => { title: "Sponsers", amount_cents: "1000" } } }
@@ -26,8 +31,8 @@ RSpec.describe ::Patreon::Patron do
   end
 
   it "should find local users matching Patreon user info" do
-    Fabricate(:user, email: "foo@bar.com")
     Fabricate(:oauth2_user_info, uid: "111112")
+    Fabricate(:user, email: "foo@bar.com")
 
     local_users = described_class.get_local_users
     expect(local_users.count).to eq(2)
@@ -42,15 +47,21 @@ RSpec.describe ::Patreon::Patron do
   end
 
   it "should sync Discourse groups with Patreon users" do
-    user = Fabricate(:user, email: "foo@bar.com")
     ouser = Fabricate(:oauth2_user_info, uid: "111112")
+    user = Fabricate(:user, email: "foo@bar.com")
+
     group1 = Fabricate(:group)
     group2 = Fabricate(:group)
     filters = { group1.id.to_s => ["0"], group2.id.to_s => ["4589"] }
     Patreon.set("filters", filters)
     described_class.sync_groups
-    expect(group1.users.to_a).to eq([user, ouser.user])
+    expect(group1.users.to_a).to eq([ouser.user, user])
     expect(group2.users.to_a).to eq([ouser.user])
+  end
+
+  it "should get already linked user via custom field" do
+    cf = Fabricate(:user_custom_field, value: "111111")
+    expect(described_class.get_local_users[0]).to eq(cf.user)
   end
 
 end

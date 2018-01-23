@@ -58,6 +58,8 @@ module ::Patreon
       reward_users = Patreon::RewardUser.all
       user.custom_fields["patreon_rewards"] = Patreon::Reward.all.map { |i, r| r["title"] if reward_users[i].include?(patreon_id) }.compact.join(", ")
       user.save unless skip_save || user.custom_fields_clean?
+
+      user
     end
 
     private
@@ -70,17 +72,23 @@ module ::Patreon
 
       def self.get_local_users
         users = User.joins(:_custom_fields).where(user_custom_fields: { name: 'patreon_id' }).uniq
-        linked_patron_ids = UserCustomField.where(name: 'patreon_id').pluck(:value)
-        unlinked_patrons = all.reject { |p| linked_patron_ids.include?(p[0]) }
+        linked_patron_ids = UserCustomField.where(name: 'patreon_id').where("value IS NOT NULL").pluck(:value)
 
-        users += unlinked_patrons.map do |p|
-          patreon_id = p[0]
-          patreon_email = p[1]['email']
-          user = ::Oauth2UserInfo.find_by(provider: "patreon", uid: patreon_id).try(:user) || ::User.find_by_email(patreon_email)
-          update_local_user(user, patreon_id)
+        oauth_users = Oauth2UserInfo.includes(:user).where(provider: "patreon")
+        oauth_users = oauth_users.where("uid NOT IN (?)", linked_patron_ids) if linked_patron_ids.present?
 
-          user
+        users += oauth_users.map do |o|
+          linked_patron_ids << o.uid
+          update_local_user(o.user, o.uid)
         end
+
+        emails = all.reject { |p| linked_patron_ids.include?(p[0]) }.map { |p| { p[1]["email"] => p[0] } }.reduce({}, :merge)
+
+        users += UserEmail.includes(:user).where(email: emails.keys).map do |ue|
+          patreon_id = emails[ue.email]
+          update_local_user(ue.user, patreon_id)
+        end
+
         users.compact
       end
   end
